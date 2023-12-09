@@ -1,0 +1,6 @@
+This code has been written for educational purposes and cannot be used commercially in any
+way since I have no involvement with the Tetris company and don't own any of their copyrights.
+
+Re-creating it in Unity in an understandable way, 
+was a fun a mental exercise and a tribute to the brilliant mind
+of Alexey Pajitnov who created Tetris in the 1980's.
