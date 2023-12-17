@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.Events;
 
 /**
- * The TetrisGameManager manages the whole game loop of spawning pieces, detecting and clearing full rows etc.
+ * The BloxGameManager manages the whole game loop of spawning pieces, detecting and clearing full rows etc.
  * 
  * The main principle is that we simply spawn pieces that consist of little cubes, 
  * and that by the positions of those little cubes to a 2d index into a grid,
@@ -23,14 +23,14 @@ using UnityEngine.Events;
  * way since I have no involvement with the Tetris company and don't own any of their copyrights.
  * It is a mental exercise and a tribute to the brilliant mind of Alexey Pajitnov who created Tetris in the 1980's.
  */
-public class TetrisGameManager : MonoBehaviour
+public class BloxGameManager : MonoBehaviour
 {
-	[SerializeField] private TetrisPiece[] piecePrefabs;
+	[SerializeField] private BloxPiece[] piecePrefabs;
 
 	//Instead of constructing new pieces randomly directly, we push them through a queue,
 	//that we prefill with a certain amount of pieces (might be zero)
 	//since we need to push items both ways (related to the HOLD ability) we use a LinkedList as a queue
-	LinkedList<TetrisPiece> pieceQueue = new();
+	LinkedList<BloxPiece> pieceQueue = new();
 	[SerializeField] private int pieceQueueSize = 2;
 
 	[SerializeField] private float autoMoveDownInterval = 1;
@@ -41,9 +41,9 @@ public class TetrisGameManager : MonoBehaviour
 
 	[SerializeField] private UnityEvent OnInitialized;
 	[SerializeField] private UnityEvent OnGameStart;
-	[SerializeField] private UnityEvent<TetrisPiece> OnPieceQueued;
-	[SerializeField] private UnityEvent<TetrisPiece> OnPieceHeld;
-	[SerializeField] private UnityEvent<TetrisPiece> OnPieceSpawned;
+	[SerializeField] private UnityEvent<BloxPiece> OnPieceQueued;
+	[SerializeField] private UnityEvent<BloxPiece> OnPieceHeld;
+	[SerializeField] private UnityEvent<BloxPiece> OnPieceSpawned;
 	[SerializeField] private UnityEvent<int> OnRowsRemoved;
 	[SerializeField] private UnityEvent OnGameOver;
 
@@ -62,14 +62,14 @@ public class TetrisGameManager : MonoBehaviour
 
 	private bool inPlay = false;
 
-	private TetrisPiece currentTetrisPiecePrefab = null;
-	private Transform currentTetrisPieceInstance = null;
-	private Transform currentTetrisPieceGhostInstance = null;
+	private BloxPiece currentPiecePrefab = null;
+	private Transform currentPieceInstance = null;
+	private Transform currentPieceGhostInstance = null;
 
 	//each time a new current piece has spawned, you can trigger the HOLD ability (once).
 	//if you hold while there is NO held piece, the current piece is stored (held) and a new piece is generated
 	//if you hold while there IS a held piece, the current piece is swapped with the held piece and held piece spawns on top
-	private TetrisPiece heldPiecePrefab = null;
+	private BloxPiece heldPiecePrefab = null;
 	private bool holdAbilityAvailable = true;
 
 	//when pieces are stored, we keep track of the y range of rows that have changed so we can optimize full row checking
@@ -118,7 +118,7 @@ public class TetrisGameManager : MonoBehaviour
 			{
 				if (CreateNewPiece())
 				{
-					OnPieceSpawned.Invoke(currentTetrisPiecePrefab);
+					OnPieceSpawned.Invoke(currentPiecePrefab);
 				}
 				else
 				{
@@ -153,7 +153,7 @@ public class TetrisGameManager : MonoBehaviour
 	{
 		for (int i = 0; i < pieceQueueSize; i++)
 		{
-			TetrisPiece piece = piecePrefabs.GetRandomElement();
+			BloxPiece piece = piecePrefabs.GetRandomElement();
 			pieceQueue.AddLast(piece);
 			OnPieceQueued.Invoke(piece);
 		}
@@ -163,7 +163,7 @@ public class TetrisGameManager : MonoBehaviour
 	 * Gets a random piece from the piece prefabs, pushes it in the queue, 
 	 * and returns the piece that 'falls' out of the queue.
 	 */
-	private TetrisPiece DequeuePiecePrefab()
+	private BloxPiece DequeuePiecePrefab()
 	{
 		//if we pushed back a HELD piece, the queue size is temporarily bigger than it is meant to be...
 		bool useHeldPiece = pieceQueue.Count > pieceQueueSize;
@@ -171,14 +171,14 @@ public class TetrisGameManager : MonoBehaviour
 		if (useHeldPiece)
 		{
 			//just use the held piece, don't update any previews etc
-			TetrisPiece nextPiece = pieceQueue.First.Value;
+			BloxPiece nextPiece = pieceQueue.First.Value;
 			pieceQueue.RemoveFirst();
 			return nextPiece;
 		}
 		else
 		{
 			//if the queue size is not overflowing, get a new random element but ....
-			TetrisPiece nextPiece = piecePrefabs.GetRandomElement();
+			BloxPiece nextPiece = piecePrefabs.GetRandomElement();
 
 			//... actually check if we are using a queue at all!
 			//if yes, add the new piece to the queue as the last entry,
@@ -198,7 +198,7 @@ public class TetrisGameManager : MonoBehaviour
 
 	private bool HasCurrentPiece()
 	{
-		return currentTetrisPiecePrefab != null;
+		return currentPiecePrefab != null && inPlay;
 	}
 
 	/**
@@ -208,21 +208,21 @@ public class TetrisGameManager : MonoBehaviour
 	private bool CreateNewPiece()
 	{
 		//we need to keep track of the original prefab we created the current piece from for the HOLD ability
-		currentTetrisPiecePrefab = DequeuePiecePrefab();
+		currentPiecePrefab = DequeuePiecePrefab();
 
 		//create the piece using it's offset. Offset is needed because all the piece's elements need to 
 		//be centered around it's rotation pivot
-		currentTetrisPieceInstance = Instantiate(currentTetrisPiecePrefab, transform).transform;
-		currentTetrisPieceInstance.localPosition = newPieceSpawnPoint + (Vector3)currentTetrisPiecePrefab.spawnOffset;
+		currentPieceInstance = Instantiate(currentPiecePrefab, transform).transform;
+		currentPieceInstance.localPosition = newPieceSpawnPoint + (Vector3)currentPiecePrefab.spawnOffset;
 
 		//try to put the piece into the field and return whether that succeeded
-		bool canBePlaced = TryToPlace(currentTetrisPieceInstance); 
+		bool canBePlaced = TryToPlace(currentPieceInstance); 
 
 		if (canBePlaced)
 		{
 			//and its ghost, turn it off until we have determined where it should go
-			currentTetrisPieceGhostInstance = Instantiate(currentTetrisPiecePrefab.ghost, transform).transform;
-			currentTetrisPieceGhostInstance.gameObject.SetActive(false);
+			currentPieceGhostInstance = Instantiate(currentPiecePrefab.ghost, transform).transform;
+			currentPieceGhostInstance.gameObject.SetActive(false);
 
 			UpdateCurrentPieceGhost();
 		}
@@ -234,14 +234,14 @@ public class TetrisGameManager : MonoBehaviour
 	 * Apply the given transformation, and return if the resulting block positions are free in the grid.
 	 * If the resulting position aren't free in the grid, the requested transformation is undone.
 	 */
-	private bool TryToPlace(Transform pTetrisPiece, Vector3 pPositionOffset = default, float pRotationOffsetInDegrees = 0)
+	private bool TryToPlace(Transform pPiece, Vector3 pPositionOffset = default, float pRotationOffsetInDegrees = 0)
 	{
-		pTetrisPiece.localPosition += pPositionOffset;
-		pTetrisPiece.Rotate(Vector3.forward, pRotationOffsetInDegrees);
+		pPiece.localPosition += pPositionOffset;
+		pPiece.Rotate(Vector3.forward, pRotationOffsetInDegrees);
 
 		//assume we can place the piece, check every child cublet to see if we are wrong
 		bool canPlace = true;
-		foreach (Transform child in pTetrisPiece)
+		foreach (Transform child in pPiece)
 		{
 			if (!IsGridLocationFree(GetGridIndex(child)))
 			{
@@ -253,8 +253,8 @@ public class TetrisGameManager : MonoBehaviour
 		if (!canPlace)
 		{
 			//undo previous transforms
-			pTetrisPiece.localPosition -= pPositionOffset;
-			pTetrisPiece.Rotate(Vector3.forward, -pRotationOffsetInDegrees);
+			pPiece.localPosition -= pPositionOffset;
+			pPiece.Rotate(Vector3.forward, -pRotationOffsetInDegrees);
 		}
 
 		return canPlace;
@@ -300,10 +300,10 @@ public class TetrisGameManager : MonoBehaviour
 		maxChangedY = int.MinValue;
 
 		//we need to loop backward since we might be detaching children into the grid
-		for (int i = currentTetrisPieceInstance.childCount - 1; i >= 0; i--)
+		for (int i = currentPieceInstance.childCount - 1; i >= 0; i--)
 		{
 			//store child cublet into the grid and detach it from main tetronimo
-			Transform child = currentTetrisPieceInstance.GetChild(i);
+			Transform child = currentPieceInstance.GetChild(i);
 			Vector2Int gridIndex = GetGridIndex(child);
 			grid[gridIndex.x, gridIndex.y] = child;
 			child.SetParent(transform, true);
@@ -322,19 +322,19 @@ public class TetrisGameManager : MonoBehaviour
 
 	private void DestroyCurrentPiece()
 	{
-		if (currentTetrisPieceInstance != null)
+		if (currentPieceInstance != null)
 		{
-			Destroy(currentTetrisPieceInstance.gameObject);
-			currentTetrisPieceInstance = null;
+			Destroy(currentPieceInstance.gameObject);
+			currentPieceInstance = null;
 		}
 
-		if (currentTetrisPieceGhostInstance != null)
+		if (currentPieceGhostInstance != null)
 		{
-			Destroy(currentTetrisPieceGhostInstance.gameObject);
-			currentTetrisPieceGhostInstance = null;
+			Destroy(currentPieceGhostInstance.gameObject);
+			currentPieceGhostInstance = null;
 		}
 
-		currentTetrisPiecePrefab = null;
+		currentPiecePrefab = null;
 	}
 
 	private void DissolveFullRows()
@@ -419,17 +419,17 @@ public class TetrisGameManager : MonoBehaviour
 	private void UpdateCurrentPieceGhost()
 	{
 		//start by moving the ghost to the piece itself
-		currentTetrisPieceGhostInstance.localPosition = currentTetrisPieceInstance.localPosition; 
-		currentTetrisPieceGhostInstance.localRotation = currentTetrisPieceInstance.localRotation;
+		currentPieceGhostInstance.localPosition = currentPieceInstance.localPosition; 
+		currentPieceGhostInstance.localRotation = currentPieceInstance.localRotation;
 
 		//move the piece as far down as possible
 		int moveDistance = 0;
-		while (TryToPlace(currentTetrisPieceGhostInstance, Vector3.down)) {
+		while (TryToPlace(currentPieceGhostInstance, Vector3.down)) {
 			moveDistance++;
 		}
 
 		//if we actually moved it, turn it on, off otherwise
-		currentTetrisPieceGhostInstance.gameObject.SetActive(moveDistance > 0);
+		currentPieceGhostInstance.gameObject.SetActive(moveDistance > 0);
 	}
 
 	private void ResetGame()
@@ -468,9 +468,9 @@ public class TetrisGameManager : MonoBehaviour
 		//and only replace the entry for an x if it's y is higher
 		Dictionary<int, Transform> x2Cublet = new Dictionary<int, Transform>();
 
-		for (int i = 0; i < currentTetrisPieceInstance.childCount; i++)
+		for (int i = 0; i < currentPieceInstance.childCount; i++)
 		{
-			Transform cublet = currentTetrisPieceGhostInstance.GetChild(i);
+			Transform cublet = currentPieceGhostInstance.GetChild(i);
 			Vector2Int gridIndex = GetGridIndex(cublet);
 
 			Transform currentCublet;
@@ -488,7 +488,7 @@ public class TetrisGameManager : MonoBehaviour
 		//now that we have the highest cublets for each x, we'll create dropdown effects for each of them
 
 		//get the movement delta for the whole piece
-		Vector3 delta = currentTetrisPieceInstance.localPosition - currentTetrisPieceGhostInstance.localPosition;
+		Vector3 delta = currentPieceInstance.localPosition - currentPieceGhostInstance.localPosition;
 
 		foreach (Transform cublet in x2Cublet.Values)
 		{
@@ -513,35 +513,35 @@ public class TetrisGameManager : MonoBehaviour
 	public void RotatePieceLeft() {
 		if (!HasCurrentPiece()) return;
 
-		TryToPlace(currentTetrisPieceInstance, default, -90);
+		TryToPlace(currentPieceInstance, default, -90);
 		UpdateCurrentPieceGhost();
 	}
 
 	public void RotatePieceRight() {
 		if (!HasCurrentPiece()) return;
 
-		TryToPlace(currentTetrisPieceInstance, default, 90);
+		TryToPlace(currentPieceInstance, default, 90);
 		UpdateCurrentPieceGhost();
 	}
 
 	public void MovePieceLeft() {
 		if (!HasCurrentPiece()) return;
 
-		TryToPlace(currentTetrisPieceInstance, Vector3.left, 0);
+		TryToPlace(currentPieceInstance, Vector3.left, 0);
 		UpdateCurrentPieceGhost();
 	}
 
 	public void MovePieceRight() {
 		if (!HasCurrentPiece()) return;
 
-		TryToPlace(currentTetrisPieceInstance, Vector3.right, 0);
+		TryToPlace(currentPieceInstance, Vector3.right, 0);
 		UpdateCurrentPieceGhost();
 	}
 
 	public void MovePieceDown() {
 		if (!HasCurrentPiece()) return;
 
-		if (!TryToPlace(currentTetrisPieceInstance, Vector3.down))
+		if (!TryToPlace(currentPieceInstance, Vector3.down))
 		{
 			StoreAndDestroyCurrentPiece();
 			DissolveFullRows();
@@ -554,7 +554,7 @@ public class TetrisGameManager : MonoBehaviour
 
 		//move as far down as we can and then immediately store the current piece
 		CreateDropVFX();
-		TryToPlace(currentTetrisPieceInstance, currentTetrisPieceGhostInstance.localPosition - currentTetrisPieceInstance.localPosition);
+		TryToPlace(currentPieceInstance, currentPieceGhostInstance.localPosition - currentPieceInstance.localPosition);
 		StoreAndDestroyCurrentPiece();
 		DissolveFullRows();
 	}
@@ -568,9 +568,9 @@ public class TetrisGameManager : MonoBehaviour
 		//and make sure we can only do this once per completed piece
 		holdAbilityAvailable = false;
 
-		//store the current tetris piece prefab but hold on to what is currently held so we can swap them
-		TetrisPiece temporary = heldPiecePrefab;
-		heldPiecePrefab = currentTetrisPiecePrefab;
+		//store the current piece prefab but hold on to what is currently held so we can swap them
+		BloxPiece temporary = heldPiecePrefab;
+		heldPiecePrefab = currentPiecePrefab;
 		OnPieceHeld.Invoke(heldPiecePrefab);
 
 		//if the temporary not is null, push it back in the queue so

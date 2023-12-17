@@ -4,7 +4,7 @@ using UnityEngine;
  * Attached to a gradient white sprite which can be tinted and 
  * used as a 'streak' effect for when a piece drops down instantaneously.
  * 
- * Initial position and scale is set by the TetrisGameManager.
+ * Initial position and scale is set by the BloxGameManager.
  */
 public class DropVFX : MonoBehaviour
 {

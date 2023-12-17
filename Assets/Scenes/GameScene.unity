@@ -4218,7 +4218,7 @@ GameObject:
   - component: {fileID: 3358208047668690069}
   - component: {fileID: 249313790362440910}
   m_Layer: 0
-  m_Name: TetrisGameManager
+  m_Name: BloxGameManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4517,7 +4517,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 62b9b482d2d9f144f85a0331922d7d27, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  tetrisGameManager: {fileID: 3358208047668690069}
+  bloxGameManager: {fileID: 3358208047668690069}
 --- !u!4 &7923051225555035582
 Transform:
   m_ObjectHideFlags: 0
